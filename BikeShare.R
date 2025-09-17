@@ -44,21 +44,50 @@ bike_recipe <- recipe(count~., data= bikeData) %>%
   step_mutate(season = factor(season)) %>%
   step_corr(all_numeric_predictors(), threshold = .1) %>%
   step_rm(datetime) %>%
-  step_dummy(all_nominal_predictors())
+  step_dummy(all_nominal_predictors()) %>%
+  step_normalize(all_numeric_predictors())
 
-  
+prepped <- prep(bike_recipe)
+bake(prepped, new_data=bikeData)
 
 
-my_linear_model <- linear_reg() %>%
-  set_engine("lm") %>%
-  set_mode("regression")
+preg_model <- linear_reg(penalty=.1,mixture=0) %>%
+  set_engine("glmnet")
+preg_model2 <- linear_reg(penalty=.5,mixture=0) %>%
+  set_engine("glmnet")
+preg_model3 <- linear_reg(penalty=.1,mixture=1) %>%
+  set_engine("glmnet")
+preg_model4 <- linear_reg(penalty=.5,mixture=1) %>%
+  set_engine("glmnet")
+preg_model5 <- linear_reg(penalty=.1,mixture=0.5) %>%
+  set_engine("glmnet")
 
-bike_workflow <- workflow() %>%
+preg_workflow <- workflow() %>%
   add_recipe(bike_recipe) %>%
-  add_model(my_linear_model) %>%
+  add_model(preg_model) %>%
+  fit(data=bikeData)
+preg_workflow2 <- workflow() %>%
+  add_recipe(bike_recipe) %>%
+  add_model(preg_model2) %>%
+  fit(data=bikeData)
+preg_workflow3 <- workflow() %>%
+  add_recipe(bike_recipe) %>%
+  add_model(preg_model3) %>%
+  fit(data=bikeData)
+preg_workflow4 <- workflow() %>%
+  add_recipe(bike_recipe) %>%
+  add_model(preg_model4) %>%
+  fit(data=bikeData)
+preg_workflow5 <- workflow() %>%
+  add_recipe(bike_recipe) %>%
+  add_model(preg_model5) %>%
   fit(data=bikeData)
 
-lin_preds <- predict(bike_workflow, new_data = testData)
+lin_preds <- predict(preg_workflow, new_data = testData)
+lin_preds2 <- predict(preg_workflow2, new_data = testData)
+lin_preds3 <- predict(preg_workflow3, new_data = testData)
+lin_preds4 <- predict(preg_workflow4, new_data = testData)
+lin_preds5 <- predict(preg_workflow5, new_data = testData)
 
 
 kaggle_submission <- lin_preds %>%
@@ -67,6 +96,35 @@ kaggle_submission <- lin_preds %>%
   rename(count =.pred) %>%
   mutate(count = pmax(0, count)) %>%
   mutate(datetime = as.character(format(datetime)))
+kaggle_submission2 <- lin_preds2 %>%
+  bind_cols(., testData) %>%
+  select(datetime, .pred) %>%
+  rename(count =.pred) %>%
+  mutate(count = pmax(0, count)) %>%
+  mutate(datetime = as.character(format(datetime)))
+kaggle_submission3 <- lin_preds3 %>%
+  bind_cols(., testData) %>%
+  select(datetime, .pred) %>%
+  rename(count =.pred) %>%
+  mutate(count = pmax(0, count)) %>%
+  mutate(datetime = as.character(format(datetime)))
+kaggle_submission4 <- lin_preds4 %>%
+  bind_cols(., testData) %>%
+  select(datetime, .pred) %>%
+  rename(count =.pred) %>%
+  mutate(count = pmax(0, count)) %>%
+  mutate(datetime = as.character(format(datetime)))
+kaggle_submission5 <- lin_preds5 %>%
+  bind_cols(., testData) %>%
+  select(datetime, .pred) %>%
+  rename(count =.pred) %>%
+  mutate(count = pmax(0, count)) %>%
+  mutate(datetime = as.character(format(datetime)))
+
 
 vroom_write(x=kaggle_submission, file="./LinearPreds.csv", delim=",")
+vroom_write2(x=kaggle_submission2, file="./LinearPreds2.csv", delim=",")
+vroom_write3(x=kaggle_submission3, file="./LinearPreds3.csv", delim=",")
+vroom_write4(x=kaggle_submission4, file="./LinearPreds4.csv", delim=",")
+vroom_write5(x=kaggle_submission5, file="./LinearPreds5.csv", delim=",")
 
