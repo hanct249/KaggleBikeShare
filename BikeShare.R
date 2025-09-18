@@ -42,7 +42,7 @@ bike_recipe <- recipe(count~., data= bikeData) %>%
   step_mutate(weather = factor(weather)) %>%
   step_time(datetime,features=c("hour")) %>%
   step_mutate(season = factor(season)) %>%
-  step_corr(all_numeric_predictors(), threshold = .1) %>%
+  #step_corr(all_numeric_predictors(), threshold = .5) %>%
   step_rm(datetime) %>%
   step_dummy(all_nominal_predictors()) %>%
   step_normalize(all_numeric_predictors())
@@ -123,8 +123,8 @@ kaggle_submission5 <- lin_preds5 %>%
 
 
 vroom_write(x=kaggle_submission, file="./LinearPreds.csv", delim=",")
-vroom_write2(x=kaggle_submission2, file="./LinearPreds2.csv", delim=",")
-vroom_write3(x=kaggle_submission3, file="./LinearPreds3.csv", delim=",")
-vroom_write4(x=kaggle_submission4, file="./LinearPreds4.csv", delim=",")
-vroom_write5(x=kaggle_submission5, file="./LinearPreds5.csv", delim=",")
+vroom_write(x=kaggle_submission2, file="./LinearPreds2.csv", delim=",")
+vroom_write(x=kaggle_submission3, file="./LinearPreds3.csv", delim=",")
+vroom_write(x=kaggle_submission4, file="./LinearPreds4.csv", delim=",")
+vroom_write(x=kaggle_submission5, file="./LinearPreds5.csv", delim=",")
 
