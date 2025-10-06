@@ -49,14 +49,16 @@ windPlot <- ggplot(data=bikeData, mapping = aes(x=windspeed,y=count)) +
 bike_recipe <- recipe(count~., data= bikeData) %>%
   step_mutate(weather= ifelse(weather == 4, 3, weather)) %>%
   step_mutate(weather = factor(weather)) %>%
-  step_time(datetime,features=c("hour")) %>%
+  step_time(datetime,features="hour") %>%
+  step_date(datetime,features="year") %>%
   step_mutate(hour=factor(datetime_hour)) %>%
-  step_dummy(hour, one_hot = TRUE) %>%
+  step_interact(~ hour:workingday) %>%
+  step_interact(~ datetime_year:workingday) %>%
   step_mutate(season = factor(season)) %>%
-  step_rm(datetime) %>%
+  step_rm(datetime, datetime_hour) %>%
   #step_nzv(all_predictors()) %>%
   step_dummy(all_nominal_predictors()) %>%
-  step_corr(all_numeric_predictors(), threshold = .5) %>%
+  #step_corr(all_numeric_predictors(), threshold = .5) %>%
   step_normalize(all_numeric_predictors())
 
 prepped <- prep(bike_recipe)
@@ -163,29 +165,16 @@ library(bonsai)
 library(lightgbm)
 library(dbarts)
 
-bart_mod <- bart(trees=tune()) %>%
+bart_mod <- parsnip::bart(trees=500) %>%
   set_engine("dbarts") %>%
   set_mode("regression")
 
 bart_wf <- workflow() %>%
   add_recipe(bike_recipe) %>%
-  add_model(bart_mod)
-
-bart_grid <- grid_regular(trees())
-
-bart_folds <- vfold_cv(bikeData, v = 5, repeats = 1)
-
-bart_results <- bart_wf %>%
-  tune_grid(resamples= for_folds, grid= bart_grid, metrics=metric_set(rmse, mae))
-
-bart_bestTune <- bart_results %>%
-  select_best(metric = "rmse")
-
-final_bart_wf <- bart_wf %>%
-  finalize_workflow(bart_bestTune) %>%
+  add_model(bart_mod) %>%
   fit(data=bikeData)
 
-bart_preds <- predict(final_bart_wf, new_data=testData)
+bart_preds <- predict(bart_wf, new_data=testData)
 
 
 # STACKING MODELS
@@ -205,7 +194,7 @@ automl_wf <- workflow() %>%
 
 auto_preds <- predict(automl_wf, new_data=testData)
 
-kaggle_submission <- auto_preds %>%
+kaggle_submission <- bart_preds %>%
   bind_cols(., testData) %>%
   mutate(.pred = exp(.pred)) %>%
   select(datetime, .pred) %>%
@@ -213,6 +202,6 @@ kaggle_submission <- auto_preds %>%
   mutate(count = pmax(0, count)) %>%
   mutate(datetime = as.character(format(datetime)))
 
-vroom_write(x=kaggle_submission, file="./AutoPreds.csv", delim=",")
+vroom_write(x=kaggle_submission, file="./bartPreds.csv", delim=",")
 
 
